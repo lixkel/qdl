@@ -132,6 +132,9 @@ struct sahara_pkt {
 			uint64_t offset;
 			uint64_t length;
 		} read64_req;
+		struct {
+			uint32_t mode;
+		} switch_mode;
 	};
 };
 
@@ -153,12 +156,24 @@ static void sahara_send_reset(struct qdl_device *qdl)
 	qdl_write(qdl, &resp, resp.length);
 }
 
+static void sahara_send_switch_mode(struct qdl_device *qdl)
+{
+	struct sahara_pkt resp;
+
+	resp.cmd = SAHARA_SWITCH_MODE_CMD;
+	resp.length = 0xC;
+	resp.switch_mode.mode = SAHARA_MODE_MEMORY_DEBUG;
+
+	qdl_write(qdl, &resp, resp.length);
+}
+
 static void sahara_hello(struct qdl_device *qdl, struct sahara_pkt *pkt)
 {
 	struct sahara_pkt resp = {};
 
 	assert(pkt->length == SAHARA_HELLO_LENGTH);
 
+	printf("mode 0x%x", pkt->hello_req.mode);
 	ux_debug("HELLO version: 0x%x compatible: 0x%x max_len: %d mode: %d\n",
 		 pkt->hello_req.version, pkt->hello_req.compatible, pkt->hello_req.max_len, pkt->hello_req.mode);
 
@@ -167,7 +182,7 @@ static void sahara_hello(struct qdl_device *qdl, struct sahara_pkt *pkt)
 	resp.hello_resp.version = SAHARA_VERSION;
 	resp.hello_resp.compatible = 1;
 	resp.hello_resp.status = SAHARA_SUCCESS;
-	resp.hello_resp.mode = pkt->hello_req.mode;
+	resp.hello_resp.mode = SAHARA_MODE_COMMAND;
 
 	qdl_write(qdl, &resp, resp.length);
 }
@@ -457,15 +472,19 @@ int sahara_run(struct qdl_device *qdl, char *img_arr[], bool single_image,
 
 		switch (pkt->cmd) {
 		case SAHARA_HELLO_CMD:
+			printf("SAHARA_HELLO_CMD\n");
 			sahara_hello(qdl, pkt);
 			break;
 		case SAHARA_READ_DATA_CMD:
+			printf("SAHARA_READ_DATA_CMD\n");
 			sahara_read(qdl, pkt, img_arr, single_image);
 			break;
 		case SAHARA_END_OF_IMAGE_CMD:
+			printf("SAHARA_END_OF_IMAGE_CMD\n");
 			sahara_eoi(qdl, pkt);
 			break;
 		case SAHARA_DONE_RESP_CMD:
+			printf("SAHARA_DONE_RESP_CMD\n");
 			done = sahara_done(qdl, pkt);
 
 			/* E.g MSM8916 EDL reports done = 0 here */
@@ -473,18 +492,25 @@ int sahara_run(struct qdl_device *qdl, char *img_arr[], bool single_image,
 				done = true;
 			break;
 		case SAHARA_MEM_DEBUG64_CMD:
+			printf("SAHARA_MEM_DEBUG64_CMD\n");
 			sahara_debug64(qdl, pkt, ramdump_dir, ramdump_filter);
 			break;
 		case SAHARA_READ_DATA64_CMD:
+			printf("SAHARA_READ_DATA64_CMD\n");
 			sahara_read64(qdl, pkt, img_arr, single_image);
 			break;
 		case SAHARA_RESET_RESP_CMD:
+			printf("SAHARA_RESET_RESP_CMD\n");
 			assert(pkt->length == SAHARA_RESET_LENGTH);
 			if (ramdump_path)
 				done = true;
 			break;
+		case SAHARA_CMD_READY_CMD:
+			printf("SAHARA_CMD_READY_CMD\n");
+			sahara_send_switch_mode(qdl);
+			break;
 		default:
-			sprintf(tmp, "CMD%x", pkt->cmd);
+			sprintf(tmp, "CMD%x aaaa", pkt->cmd);
 			print_hex_dump(tmp, buf, n);
 			break;
 		}
