@@ -39,7 +39,6 @@ static void print_usage(void)
 
 int main(int argc, char **argv)
 {
-	bool found_mapping = false;
 	char *dev_node = NULL;
 	char *serial = NULL;
 	long file_id;
@@ -60,7 +59,6 @@ int main(int argc, char **argv)
 			printf("Using port - %s\n", dev_node);
 			break;
 		case 's':
-			found_mapping = true;
 			file_id = strtol(optarg, NULL, 10);
 			if (file_id < 0 || file_id >= MAPPING_SZ)
 				errx(1, "ID:%ld has to be in range of 0 - %d\n", file_id, MAPPING_SZ - 1);
@@ -78,11 +76,6 @@ int main(int argc, char **argv)
 		}
 	}
 
-	// -s is required
-	if (!found_mapping) {
-		print_usage();
-		return 1;
-	}
 
 	if (dev_node) {
 		qdl.fd = open(dev_node, O_RDWR);

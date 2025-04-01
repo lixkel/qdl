@@ -173,7 +173,7 @@ static void sahara_hello(struct qdl_device *qdl, struct sahara_pkt *pkt)
 
 	assert(pkt->length == SAHARA_HELLO_LENGTH);
 
-	printf("mode 0x%x", pkt->hello_req.mode);
+	printf("mode 0x%x\n", pkt->hello_req.mode);
 	ux_debug("HELLO version: 0x%x compatible: 0x%x max_len: %d mode: %d\n",
 		 pkt->hello_req.version, pkt->hello_req.compatible, pkt->hello_req.max_len, pkt->hello_req.mode);
 
@@ -182,7 +182,12 @@ static void sahara_hello(struct qdl_device *qdl, struct sahara_pkt *pkt)
 	resp.hello_resp.version = SAHARA_VERSION;
 	resp.hello_resp.compatible = 1;
 	resp.hello_resp.status = SAHARA_SUCCESS;
-	resp.hello_resp.mode = SAHARA_MODE_COMMAND;
+	if (pkt->hello_req.mode == SAHARA_MODE_MEMORY_DEBUG) {
+		resp.hello_resp.mode = pkt->hello_req.mode;
+	}
+	else {
+		resp.hello_resp.mode = SAHARA_MODE_COMMAND;
+	}
 
 	qdl_write(qdl, &resp, resp.length);
 }
